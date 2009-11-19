@@ -143,7 +143,7 @@ class GitConnector(Component):
         def get_supported_types(self):
                 yield ("git", 8)
 
-        def get_repository(self, type, dir, authname):
+        def get_repository(self, type, dir, params):
                 """GitRepository factory method"""
                 assert type == "git"
 
@@ -153,7 +153,7 @@ class GitConnector(Component):
                         raise TracError("GIT version %s installed not compatible (need >= %s)" %
                                         (self._version['v_str'], self._version['v_min_str']))
 
-                repos = GitRepository(dir, self.log,
+                repos = GitRepository(dir, params, self.log,
                                       persistent_cache=self._persistent_cache,
                                       git_bin=self._git_bin,
                                       shortrev_len=self._shortrev_len)
@@ -167,14 +167,15 @@ class GitConnector(Component):
                 return repos
 
 class GitRepository(Repository):
-        def __init__(self, path, log, persistent_cache=False, git_bin='git', shortrev_len=7):
+        def __init__(self, path, params, log, persistent_cache=False, git_bin='git', shortrev_len=7):
                 self.logger = log
                 self.gitrepo = path
                 self._shortrev_len = max(4, min(shortrev_len, 40))
 
                 self.git = PyGIT.StorageFactory(path, log, not persistent_cache,
                                                 git_bin=git_bin).getInstance()
-                Repository.__init__(self, "git:"+path, None, log)
+
+                Repository.__init__(self, "git:"+path, params, None, log)
 
         def close(self):
                 self.git = None
