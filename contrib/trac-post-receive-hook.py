@@ -186,7 +186,7 @@ def handle_ref(old, new, ref, env, repo):
         cursor.execute(first_part
             % ', '.join(['%s'] * len(pending_commits)), pending_commits)
         seen_commits = map(itemgetter(0), cursor.fetchall())
-    except db.OperationalError:
+    except (db.OperationalError, db.ProgrammingError):
         # almost definitely due to git_seen missing
         cursor = db.cursor() # in case it was closed
         cursor.execute('CREATE TABLE git_seen (sha1 TEXT, repo TEXT)')
