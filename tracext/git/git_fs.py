@@ -175,7 +175,8 @@ class GitRepository(Repository):
                 self.git = PyGIT.StorageFactory(path, log, not persistent_cache,
                                                 git_bin=git_bin).getInstance()
 
-                Repository.__init__(self, "git:"+path, params, None, log)
+                Repository.__init__(self, "git:"+path, params, log)
+#                Repository.__init__(self, "git:"+path, params, None, log)
 
         def close(self):
                 self.git = None
@@ -207,7 +208,7 @@ class GitRepository(Repository):
                 return self.git.shortrev(self.normalize_rev(rev), min_len=self._shortrev_len)
 
         def get_node(self, path, rev=None):
-                return GitNode(self.git, path, rev, self.log)
+                return GitNode(self.git, path, rev, self.log, None)
 
         def get_quickjump_entries(self, rev):
                 for bname,bsha in self.git.get_branches():
@@ -221,7 +222,7 @@ class GitRepository(Repository):
 
         def get_changeset(self, rev):
                 """GitChangeset factory method"""
-                return GitChangeset(self.git, rev)
+                return GitChangeset(None, self.git, rev)
 
         def get_changes(self, old_path, old_rev, new_path, new_rev, ignore_ancestry=0):
                 # TODO: handle renames/copies, ignore_ancestry
@@ -246,6 +247,7 @@ class GitRepository(Repository):
                                 new_node = self.get_node(path, new_rev)
 
                         yield (old_node, new_node, kind, change)
+
 
         def next_rev(self, rev, path=''):
                 return self.git.hist_next_revision(rev)
@@ -273,13 +275,13 @@ class GitRepository(Repository):
                                 rev_callback(rev)
 
 class GitNode(Node):
-        def __init__(self, git, path, rev, log, ls_tree_info=None):
+        def __init__(self, git, path, rev, log, ls_tree_info=None, repos=None):
                 self.log = log
                 self.git = git
                 self.fs_sha = None # points to either tree or blobs
                 self.fs_perm = None
                 self.fs_size = None
-                rev = rev and str(rev) or 'HEAD'
+                self.rev = rev and str(rev) or 'HEAD'
 
                 kind = Node.DIRECTORY
                 p = path.strip('/')
@@ -307,7 +309,10 @@ class GitNode(Node):
                 self.created_path = path
                 self.created_rev = rev
 
-                Node.__init__(self, path, rev, kind)
+        #        Node.__init__(self, path, rev, kind)
+                # TODO: check node id
+                Node.__init__(self, repos, path, self.rev, kind)
+
 
         def __git_path(self):
                 "return path as expected by PyGIT"
@@ -386,7 +391,7 @@ class GitChangeset(Changeset):
                 'C': Changeset.COPY
                 } # TODO: U, X, B
 
-        def __init__(self, git, sha):
+        def __init__(self, repos, git, sha):
                 self.git = git
                 try:
                         (msg, props) = git.read_commit(sha)
@@ -402,7 +407,9 @@ class GitChangeset(Changeset):
                 # use 1st committer as changeset owner/timestamp
                 (user_, time_) = _parse_user_time(props['committer'][0])
 
-                Changeset.__init__(self, sha, msg, user_, time_)
+                # Changeset.__init__(self, sha, msg, user_, time_)
+                Changeset.__init__(self, repos, sha, msg, user_, time_)
+
 
         def get_properties(self):
                 properties = {}
